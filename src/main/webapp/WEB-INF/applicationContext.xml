@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security.xsd">
+
+<security:global-method-security pre-post-annotations="enabled"/>
+
+
+    <!-- Some DB options and stuff -->
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+
+        <property name="driverClassName" value="org.h2.Driver"/>
+        <property name="url" value="jdbc:h2:tcp://localhost/~/test"/>
+        <property name="username" value="sa"/>
+        <property name="password" value=""/>
+    </bean>
+
+
+
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="hibernateProperties">
+            <props>
+                <prop key="hibernate.current_session_context_class">thread</prop>
+                <prop key="hibernate.dialect">org.hibernate.dialect.H2Dialect</prop>
+                <prop key="hibernate.hbm2ddl.auto">update</prop>
+                <prop key="hibernate.show_sql">true</prop>
+                <prop key="hibernate.format_sql">true</prop>
+            </props>
+        </property>
+        <property name="packagesToScan">
+            <list>
+                <value>com.myapp</value>
+            </list>
+        </property>
+    </bean>
+
+
+    <bean id="transactionManager" class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sessionFactory"/>
+    </bean>
+
+    <!-- Using expressions for Spring security since it is latest and better way to do things -->
+    <security:http auto-config="true" use-expressions="true">
+        <!--Only users that have ROLE_ADMIN can access this link -->
+        <security:intercept-url pattern="/users**" access="hasRole('ROLE_ADMIN')"/>
+        <!--Only users that have ROLE_ADMIN can access this link -->
+        <security:intercept-url pattern="/users/**" access="hasRole('ROLE_ADMIN')"/>
+        <!--Only users that are authenticated can access this link -->
+        <security:intercept-url pattern="/showmessages**" access="isAuthenticated()"/>
+    </security:http>
+
+
+    <security:authentication-manager>
+        <security:authentication-provider>
+
+            <!-- Enabling password hashing by Spring -->
+            <security:password-encoder hash="bcrypt"/>
+
+            <security:jdbc-user-service data-source-ref="dataSource"
+                                        authorities-by-username-query="SELECT username, authority FROM roles WHERE username = ?"
+                                        users-by-username-query="SELECT name,password,id FROM user WHERE name = ?"/>
+        </security:authentication-provider>
+
+
+    </security:authentication-manager>
+
+
+</beans>
